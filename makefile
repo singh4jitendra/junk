@@ -1,0 +1,241 @@
+BRANCH_PROGRAMS = IQxmit
+
+ACU_LIBDIR = /home/acucobol912/lib
+ACUCBL_FLAGS = -I $(ACU_LIBDIR)
+TAXWARE_LIBS = /home/taxware/utl
+
+LANGCODE = -D _FORCE_ENGLISH
+CFLAGS = -O -c -D _GNU_SOURCE $(LANGCODE) $(ACUCBL_FLAGS) -fPIC
+LDFLAGS = -L . -L $(ACU_LIBDIR) -L $(TAXWARE_LIBS)
+USEBUFFER = -D USEBUFFERLOG
+
+GS_OBJS = genservr.o gen_server_funcs.o
+WGS_OBJS = ${GS_OBJS:.o=_w.o}
+
+BRANCH_CFLAGS = -D _CALL_COBOL
+WESDOC_CFLAGS = $(CFLAGS) -D _EMBEDDED_COBOL -D NSC -D _INCLUDE_TERM_INFO -I $(ACU_LIBDIR) 
+
+WESCO_LIBS = -lwesco-tcp -lwesco-user
+CRYPT_LIBS = -lcrypt
+NET_LIBS = -lnsl
+ACU_SUBS = \
+		   ${ACU_LIBDIR}/sub.o \
+		   ${ACU_LIBDIR}/callc.o \
+		   ${ACU_LIBDIR}/filetbl.o \
+		   ${ACU_LIBDIR}/GETEVAR.o \
+		   ${ACU_LIBDIR}/whom.o \
+		   ${ACU_LIBDIR}/getpart.o \
+	   ${ACU_LIBDIR}/putq.o \
+		   ${ACU_LIBDIR}/TRANSPLIT.o \
+		   ${ACU_LIBDIR}/COBSHELL.o \
+		   ${ACU_LIBDIR}/HTRAP.o \
+		   ${ACU_LIBDIR}/dialout.o \
+		   ${ACU_LIBDIR}/getq.o \
+	   ${ACU_LIBDIR}/GETDATE.o \
+		   ${ACU_LIBDIR}/linkedlist.o \
+		   ${ACU_LIBDIR}/shell.o \
+		   ${ACU_LIBDIR}/nova_funcs.o \
+		   ${ACU_LIBDIR}/ws_secure.o \
+		   ${ACU_LIBDIR}/uid_funcs.o \
+		   ${ACU_LIBDIR}/rc_part.o \
+		   ${ACU_LIBDIR}/ws_setuid.o
+ACU_LIBS = \
+		   ${ACU_LIBDIR}/libruncbl.a \
+		   ${ACU_LIBDIR}/libaclnt.a \
+		   ${ACU_LIBDIR}/libacvt.a \
+		   ${ACU_LIBDIR}/libfsi.a \
+		   ${ACU_LIBDIR}/libaxml.a \
+		   ${ACU_LIBDIR}/libaregex.a \
+		   ${ACU_LIBDIR}/libacuterm.a \
+		   ${ACU_LIBDIR}/libexpat.a \
+		   ${ACU_LIBDIR}/libvision.a \
+		   ${ACU_LIBDIR}/libsocks.a \
+		   ${ACU_LIBDIR}/libmessage.a \
+		   ${ACU_LIBDIR}/libcfg.a \
+		   ${ACU_LIBDIR}/liblib.a \
+		   ${ACU_LIBDIR}/libstdlib.a \
+		   ${ACU_LIBDIR}/libmemory.a \
+		   ${ACU_LIBDIR}/libcobacme.a \
+		   ${ACU_LIBDIR}/libz.a \
+		   -ltaxcommono -lsalesusetax -lverazip -lstep -ldl -lpthread -lm
+
+LIBS =  ${WESCO_LIBS} \
+		-lm \
+		-ldl \
+	${CRYPT_LIBS} \
+	${NET_LIBS}
+
+LIBWESCO_SUBS = common.o di.o err.o generic.o ls.o more.o part.o \
+		mailmsg.o port.o rcv.o readini.o readn.o reserve.o \
+		sharemem.o snd.o timer.o wdack.o wdgetinv.o wdqueue.o \
+		weslog.o writen.o maint.o gen2.o genclient650.o \
+		genclient653.o pty.o base2.o queuefile.o rsvport.o \
+		setsignal.o callcobol.o gen_common_funcs.o \
+		gen_client_funcs.o genclient.o checkpid.o ws_remove.o \
+		ws_trace_log.o ac2.o snapshot.o ws_syslog.o wesnet.o \
+		pidfile.o ws_pwfile.o libwesco-user.so
+
+all: libwesco-user.so libwesco-tcp.so branch_genserver ackserver rsvserver \
+	 wdtransmit wdreceive \
+	 clgen GQconfig GQxmit IQconfig IQcontrol IQxmit tonovell frnovell \
+	 proccntl prockill procmgr qfix \
+	 proc140 proc511 proc514 proc515 \
+	 null_to_space qmgr frtcp \
+	 totcp net_client filetimecheck servicecheck superx secure \
+	 secmaint cvtpasswd dtsplit updtspwd \
+	 createsem nextpart mod-cobshell.so
+
+cleanall: clean all
+
+clean:
+	rm -f *.o *.so wdreceive wdtransmit tonovell rsvserver qfix procmgr prockill proccntl invserver genserver frnovell \
+	clgen ackserver IQconfig IQcontrol IQxmit GQxmit GQconfig proc140 proc511 proc514 proc515 createsem mod-cobshell.o
+
+wesdoc_genserver: genservr_w.o gen_server_funcs_w.o libwesco-tcp.so ac2.o snapshot.o
+	${CC} ${COBOL_LDFLAGS} -o genserver_w genservr_w.o gen_server_funcs_w.o ac2.o snapshot.o ${ACU_SUBS} ${LIBS} ${ACU_LIBS}
+
+genservr_w.o: genservr.c genservr.h gen2.h generic.h
+	${CC} ${WESDOC_CFLAGS} -o genservr_w.o genservr.c
+
+gen_server_funcs_w.o: gen_server_funcs.c
+	${CC} ${WESDOC_CFLAGS} -o gen_server_funcs_w.o gen_server_funcs.c
+
+branch_genserver: gen_server_funcs.o genservr.o
+	${CC} ${LDFLAGS} -o ./genserver ${GS_OBJS} ${LIBS}
+
+gen_server_funcs.o: gen_server_funcs.c
+	${CC} -c ${CFLAGS} ${BRANCH_CFLAGS} gen_server_funcs.c
+
+genservr.o: genservr.c genservr.h gen2.h generic.h
+	${CC} ${CFLAGS} -o genservr.o genservr.c
+
+genserver.rt: ${WGS_OBJS}
+
+libwesco-user.so: ws_get_uid.o get_process_owner.o
+	${CC} -shared -o ./$@ ws_get_uid.o get_process_owner.o
+
+libwesco-tcp.so: $(LIBWESCO_SUBS)
+	${CC} -shared -o ./$@ ${LIBWESCO_SUBS} -lcrypt
+
+ackserver: ackservr.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ ackservr.o ${LIBS}
+
+rsvserver: rsvservr.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ rsvservr.o ${LIBS}
+
+#invserver: invservr.o libwesco-tcp.so
+#	${CC} ${LDFLAGS} -o ./$@ invservr.o ${ACU_SUBS} ${LIBS} ${ACU_LIBS}
+
+#maintserverQ: maintq.o libwesco-tcp.so
+#	${CC} ${LDFLAGS} -o ./$@ maintq.o ${ACU_SUBS} ${LIBS} ${ACU_LIBS}
+
+clgen: clgen.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ clgen.o ${LIBS}
+
+wdtransmit: wdtrans.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ wdtrans.o ${LIBS}
+	
+wdrecv.o: wdrecv.c
+	${CC} -c ${CFLAGS} ${USEBUFFER} -c -o wdrecv.o wdrecv.c
+
+wdreceive: wdrecv.o libwesco-tcp.so
+	${CC} ${LDFLAGS} ${USEBUFFER} -o ./$@ wdrecv.o ${LIBS}
+
+GQconfig: gqconfig.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ gqconfig.o ${LIBS}
+
+GQxmit: gqxmit.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ gqxmit.o ${LIBS}
+
+MSQconfig: msqconf.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ msqconf.o ${LIBS}
+
+IQconfig: iqconf.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ iqconf.o ${LIBS}
+
+IQcontrol: iqcont.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ iqcont.o ${LIBS}
+
+IQxmit: maintx.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ maintx.o ${LIBS}
+
+tonovell: tonovell.o getq.o
+	${CC} ${LDFLAGS} -o ./$@ tonovell.o getq.o ${LIBS}
+
+frnovell: frnovell.o putq.o
+	${CC} ${LDFLAGS} -o ./$@ frnovell.o putq.o ${LIBS}
+
+null_to_space: null_to_space.o
+
+procmgr: procmgr.o
+
+proccntl: proccntl.o
+
+prockill: prockill.o
+
+qfix: qfix.o
+
+qmgr: qmgr.o
+
+qmgrup: qmgrup.o
+
+frtcp: frtcp.o
+
+totcp: totcp.o
+
+net_client: net_client.o net_lib.o linkedlist.o fs_rules.o libwesco-tcp.so
+	${CC} ${LDFLAGS} -o ./$@ net_client.o net_lib.o linkedlist.o fs_rules.o ${LIBS}
+
+filetimecheck: filetimecheck.o
+
+servicecheck: servicecheck.o
+
+putq.o: putq.c qmgrup.c
+
+superx: superx.c
+	${CC} ${LDFLAGS} -o ./$@ -D _GNU_SOURCE superx.c
+
+secure: secure.o ws_pwfile.o
+	${CC} ${LDFLAGS} -o ./$@ secure.o -l crypt -l wesco-tcp -l wesco-user
+
+secmaint: secmaint.o ws_pwfile.o
+	${CC} ${LDFLAGS} -o ./$@ secmaint.o -l crypt -l wesco-tcp -l wesco-user
+
+cvtpasswd: cvtpasswd.o
+	${CC} ${LDFLAGS} -o ./$@ cvtpasswd.o -l crypt
+
+dtsplit: dtsplit.o
+	${CC} ${LDFLAGS} -o ./$@ dtsplit.o
+
+updtspwd: updtspwd.o
+	${CC} ${LDFLAGS} -o ./$@ updtspwd.o -l crypt
+
+wlogin: wlogin.o
+	${CC} ${LDFLAGS} -o ./$@ wlogin.o -l wesco-tcp -l wesco-user
+
+createsem: createsem.c
+	${CC} ${LDFLAGS} -o ./$@ createsem.c
+
+nextpart: nextpart.o
+	${CC} ${LDFLAGS} -o ./$@ nextpart.c
+
+#invservr.o: invservr.c invservr.h
+#	$(CC) $(CFLAGS) -o ./invservr.o -D A_call_err="Astdlib_A_call_err()" invservr.c
+#	
+proc140: frnovell
+	cp -p frnovell ./proc140
+	
+proc511: frnovell
+	cp -p frnovell ./proc511
+	
+proc514: frnovell
+	cp -p frnovell ./proc514
+	
+proc515: frnovell
+	cp -p frnovell ./proc515
+	
+mod-cobshell.so : mod-cobshell.o
+	cc -shared -W1,-soname,mod-cobshell.so.1 -o mod-cobshell.so mod-cobshell.o
+
+mod-cobshell.o : mod-cobshell.c
+	cc -fPIC -g -c -Wall mod-cobshell.c
